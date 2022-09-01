@@ -1,0 +1,18 @@
+name: ann
+channels:
+  - defaults
+dependencies:
+  - python=3.7
+  - pip
+  - matplotlib
+  - pandas
+  - holoviews
+  - hvplot
+  - panel
+#  - ipykernel  
+  - pillow == 9.0.1
+  - pip:
+    - scikit-learn
+    - tensorflow
+    - openpyxl==3.0.5
+    
