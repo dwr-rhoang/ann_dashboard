@@ -253,5 +253,7 @@ dash = pn.Row(
               architecture_w,refresh_btn
     )
 )
+dash.servable(title = "DSM2 ANN Emulator Dashboard")
 
-dash.show(title = "DSM2 ANN Emulator Dashboard")
+if __name__ == '__main__':
+    dash.show(title = "DSM2 ANN Emulator Dashboard")
