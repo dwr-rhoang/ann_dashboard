@@ -26,7 +26,7 @@ scale_df = scale_df1.copy()
 
 class SliderGroup:
     def __init__(self,input_loc):
-        sp = dict(start=0,  end=2, step=0.1, value=1,
+        sp = dict(start=0.20,  end=2, step=0.1, value=1,
                   orientation = 'vertical',direction ='rtl',
                   margin=8,height=150)
         self.input_loc = input_loc
@@ -96,7 +96,7 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
     p.line(source = pred_df,x='date',y=str(selected_key_stations),
            line_color = 'blue', line_width=1, legend_label='Predicted')
     p.plot_height = 500
-    p.plot_width = 1200
+    p.plot_width = 1000
     p.legend.location = 'top_left'
     p.yaxis.axis_label = 'EC (uS/cm)'
     p.xaxis.axis_label = 'Date'
@@ -141,16 +141,25 @@ train_btn = pn.widgets.Button(name='Train ANN', button_type='primary')
 refresh_btn = pn.widgets.Button(name='Refresh Plot', button_type='default',width=50)
 
 title_pane = pn.pane.Markdown('''
-### DSM2 Emulator Dashboard
+## DSM2 Emulator Dashboard
+Disclaimer: this dashboard is a prototype to demonstrate the functionality of the web-based user interface, and will be hosted for a limited time during its evaluation period.
+  The results generated from this tool are still under review.  
+  Your feeback is appreciated!
+[Leave Feeback](https://forms.gle/C6ysGxvxwqK1XY54A)
+''',background='whitesmoke')
+disclaimer_pane = pn.pane.Markdown('''
+Test
 ''')
 assumptions_pane = pn.pane.Markdown('''
 #### Hyperparameters
 MLP Network  
-model_str_def = 'd8_d4_o1'  
-input_prepro_option=1  
-group_stations = False  
-epochs = 5000  
-input file = dsm2_ann_inputs_20220204.xlsx
+Trained on historical DSM2 EC outputs from 1990-2019
+''')
+
+feedback_pane = pn.pane.Markdown('''
+Thank you for evaluating the DSM2 Emulator Dashboard. Your feedback and suggestions are welcome.  
+
+[Leave Feeback](https://forms.gle/C6ysGxvxwqK1XY54A)
 ''')
 
 # Bindings
@@ -196,7 +205,7 @@ listener_bnd = pn.bind(listener,
 
 # Dashboard Layout
 
-dash = pn.Row(
+dash = pn.Column(title_pane,pn.Row(
     pn.Column(pn.pane.Markdown('### ANN Inputs - Input Scaler'),
             
             pn.Tabs(
@@ -253,7 +262,6 @@ dash = pn.Row(
               architecture_w,refresh_btn
     )
 )
-dash.servable(title = "DSM2 ANN Emulator Dashboard")
+)
 
-if __name__ == '__main__':
-    dash.show(title = "DSM2 ANN Emulator Dashboard")
+dash.show(title = "DSM2 ANN Emulator Dashboard")
