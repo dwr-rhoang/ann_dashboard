@@ -1,0 +1,7 @@
+# Training Logs
+tf_training_logs/
+__pycache__/
+images/
+
+# Workspace configurations
+*.code-workspace

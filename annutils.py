@@ -1,18 +1,18 @@
-from sklearn import preprocessing
+# from sklearn import preprocessing
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import r2_score
-#
-import tensorflow as tf
+
+# import tensorflow as tf
 from tensorflow import keras
 import joblib
-#
+
 import pandas as pd
 import numpy as np
 # viz
-import hvplot.pandas
-import holoviews as hv
-import panel as pn
+# import hvplot.pandas
+# import holoviews as hv
+# import panel as pn
 # def synchronize(dfx,dfy):
 #     '''
 #     synchronizes on index dfx and dfy and return tuple of synchronized data frames
@@ -21,11 +21,13 @@ import panel as pn
 #     dfsync=pd.concat([dfx,dfy],axis=1).dropna()
 #     return dfsync.iloc[:,:-1],dfsync.iloc[:,-1:]
 
-def synchronize(dfx,dfy):
+def synchronize(dfx,dfy,lead_time=0,lead_freq='D'):
     '''
     synchronizes on index dfx and dfy and return tuple of synchronized data frames
     Note: assumes dfy has only one column
     '''
+    if lead_time > 0:
+        dfy.index = dfy.index.shift(-lead_time,freq=lead_freq)
     dfsync=pd.concat([dfx,dfy],axis=1).dropna()
     return dfsync.iloc[:,:-len(dfy.columns)],dfsync.iloc[:,-len(dfy.columns):]
 
@@ -55,18 +57,31 @@ def trim_output_to_index(df,index):
     return df.loc[index,:] #nsamples, noutput
 
 def split(df, calib_slice, valid_slice):
-    return df[calib_slice], df[valid_slice]
+    if type(calib_slice) == list:
+        calib_set = pd.concat([df[slc] for slc in calib_slice],axis=0)
+    else:
+        calib_set = df[calib_slice]
+    if type(valid_slice) == list:
+        valid_set = pd.concat([df[slc] for slc in valid_slice],axis=0)
+    else:
+        valid_set = df[valid_slice]
+    return calib_set, valid_set
 
 class myscaler():
     def __init__(self):
-        self.min_val = None
-        self.max_val = None
+        self.min_val = float('inf')
+        self.max_val = -float('inf')
     
     def fit_transform(self, data):
-        data[data<0]=float('nan')
+        data[data==-2]=float('nan')
         self.min_val = data.min()
         self.max_val = data.max()
+        
+    def update(self, other_scaler):
+        self.min_val = np.minimum(self.min_val,other_scaler.min_val)
+        self.max_val = np.maximum(self.max_val,other_scaler.max_val)
     
+        
     def transform(self, data):
         return (data - self.min_val) * 1.0 / (self.max_val - self.min_val)
     
@@ -87,9 +102,28 @@ def create_xyscaler(dfin,dfout):
     _ = yscaler.fit_transform(pd.concat(dfout,axis=0))
     return xscaler, yscaler
 
+def jitter(x, sigma=0.03):
+    # https://arxiv.org/pdf/1706.00527.pdf
+    return x + np.random.normal(loc=0., scale=sigma, size=x.shape)
+
+def dropout(x, p=0.03):
+    return x * (np.random.binomial([np.ones(x.shape)],
+                                  1-p)[0]) # * (1.0/(1-p)) # re-normalize the vector to compensate for 0's
+
+
+def apply_augmentation(x, apply_aug=False,noise_sigma=0.03,dropout_ratio=0):
+    np.random.seed(0)
+    if apply_aug:
+        x = jitter(x,sigma=noise_sigma)
+        x = dropout(x,p=dropout_ratio)
+    return x
+
 def create_training_sets(dfin, dfout, calib_slice=slice('1940','2015'), valid_slice=slice('1923','1939'),
                          train_frac=None,
-                         ndays=8,window_size=11,nwindows=10):
+                         ndays=8,window_size=11,nwindows=10,
+                         noise_sigma=0.,dropout_ratio=0.,
+                         lead_time=0,lead_freq='D',
+                         xscaler=None, yscaler=None):
     '''
     dfin is a dataframe that has sample (rows/timesteps) x nfeatures 
     dfout is a dataframe that has sample (rows/timesteps) x 1 label
@@ -103,9 +137,11 @@ def create_training_sets(dfin, dfout, calib_slice=slice('1940','2015'), valid_sl
     # create antecedent inputs aligned with outputs for each pair of dfin and dfout
     dfina,dfouta=[],[]
     # scale across all inputs and outputs
-    xscaler,yscaler=create_xyscaler(dfin,dfout)
+    if (xscaler is None) or (yscaler is None):
+        xscaler,yscaler=create_xyscaler(dfin,dfout)
+        
     for dfi,dfo in zip(dfin,dfout):
-        dfi,dfo=synchronize(dfi,dfo)
+        dfi,dfo=synchronize(dfi,dfo,lead_time=lead_time,lead_freq=lead_freq)
         dfi,dfo=pd.DataFrame(xscaler.transform(dfi),dfi.index,columns=dfi.columns),pd.DataFrame(yscaler.transform(dfo),dfo.index,columns=dfo.columns)
         dfi,dfo=synchronize(create_antecedent_inputs(dfi,ndays=ndays,window_size=window_size,nwindows=nwindows),dfo)
         dfina.append(dfi)
@@ -123,7 +159,7 @@ def create_training_sets(dfin, dfout, calib_slice=slice('1940','2015'), valid_sl
     # append all calibration and validation slices across all input/output sets
     xallc,xallv=dfins[0]
     for xc,xv in dfins[1:]:
-        xallc=np.append(xallc,xc,axis=0)
+        xallc=np.append(apply_augmentation(xallc,noise_sigma=noise_sigma,dropout_ratio=dropout_ratio),xc,axis=0)
         xallv=np.append(xallv,xv,axis=0)
     yallc, yallv = dfouts[0]
     for yc,yv in dfouts[1:]:
@@ -149,7 +185,6 @@ def create_memory_sequence_set(xx,yy=None,time_memory=120):
     else:
         return xxarr
 ############### TESTING - SPLIT HERE #####################
-import panel as pn
 
 def predict(model,dfx,xscaler,yscaler,columns=['prediction'],ndays=8,window_size=11,nwindows=10):
     dfx=pd.DataFrame(xscaler.transform(dfx),dfx.index,columns=dfx.columns)
@@ -166,15 +201,13 @@ def predict_with_actual(model, dfx, dfy, xscaler, yscaler):
 def plot(dfy,dfp):
     return dfy.hvplot(label='target')*dfp.hvplot(label='prediction')
 
-def show_performance(model, dfx, dfy, xscaler, yscaler):
-    from sklearn.metrics import r2_score
-    dfyp=predict_with_actual(model,dfx,dfy,xscaler,yscaler)
-    print('R^2 ',r2_score(dfyp.iloc[:,0],dfyp.iloc[:,1]))
-    dfyp.columns=['target','prediction']
-    plt=(dfyp.iloc[:,1]-dfyp.iloc[:,0]).hvplot.kde().opts(width=300)+dfyp.hvplot.points(x='target',y='prediction').opts(width=300)
-    return pn.Column(plt, plot(dfyp.iloc[:,0],dfyp.iloc[:,1]))
+# def show_performance(model, dfx, dfy, xscaler, yscaler):
+#     dfyp=predict_with_actual(model,dfx,dfy,xscaler,yscaler)
+#     print('R^2 ',r2_score(dfyp.iloc[:,0],dfyp.iloc[:,1]))
+#     dfyp.columns=['target','prediction']
+#     plt=(dfyp.iloc[:,1]-dfyp.iloc[:,0]).hvplot.kde().opts(width=300)+dfyp.hvplot.points(x='target',y='prediction').opts(width=300)
+#     return pn.Column(plt, plot(dfyp.iloc[:,0],dfyp.iloc[:,1]))
 ###########
-import joblib
 class ANNModel:
     '''
     model consists of the model file + the scaling of inputs and outputs
@@ -197,8 +230,9 @@ def load_model(location,custom_objects):
     '''
     load model (ANNModel) which consists of model (Keras) and scalers loaded from two files
     '''
-    model=keras.models.load_model('%s.h5'%location,custom_objects=custom_objects)
+    model=keras.models.load_model('%s.h5'%location,custom_objects=custom_objects)    
     xscaler,yscaler=joblib.load('%s_xyscaler.dump'%location)
+
     return ANNModel(model,xscaler,yscaler)
 
 ########### TRAINING - SPLIT THIS MODULE HERE ###################
@@ -213,13 +247,13 @@ def _old_predict(df_x, mlp, xs, ys):
     y_pred=ys.inverse_transform(np.vstack(y_pred))
     return pd.DataFrame(y_pred,df_x.index,columns=['prediction'])
 
-def show(df_x, df_y, mlp, xs, ys):
-    y=np.ravel(ys.transform(df_y))
-    y_pred=mlp.predict(xs.transform(df_x))
-    r2=mlp.score(xs.transform(df_x),y)
-    print('Score: ',r2)
-    return pn.Column(pn.Row(hv.Scatter((y,y_pred)).opts(aspect='square'),hv.Distribution(y_pred-y).opts(aspect='square')),
-                     hv.Curve((df_y.index,y_pred),label='prediction')*hv.Curve((df_y.index,y),label='target').opts(width=800))
+# def show(df_x, df_y, mlp, xs, ys):
+#     y=np.ravel(ys.transform(df_y))
+#     y_pred=mlp.predict(xs.transform(df_x))
+#     r2=mlp.score(xs.transform(df_x),y)
+#     print('Score: ',r2)
+#     return pn.Column(pn.Row(hv.Scatter((y,y_pred)).opts(aspect='square'),hv.Distribution(y_pred-y).opts(aspect='square')),
+#                      hv.Curve((df_y.index,y_pred),label='prediction')*hv.Curve((df_y.index,y),label='target').opts(width=800))
 
 def train(df_x,df_y,hidden_layer_sizes=(10,),max_iter=1000,activation='relu',tol=1e-4):
     xs=MinMaxScaler()
@@ -366,3 +400,11 @@ def bottleneck_1d(
         return y
 
     return f
+
+def conv_filter_generator(ndays=7,window_size = 11, nwindows=10):
+    w = np.zeros((1,ndays+nwindows*window_size,ndays+nwindows))
+    for ii in range(ndays):
+        w[0,ndays+nwindows*window_size-ii-1,ii] = 1
+    for ii in range(nwindows):
+        w[0,((nwindows-ii-1)*window_size):((nwindows-ii)*window_size),ndays+ii] = 1/window_size
+    return w

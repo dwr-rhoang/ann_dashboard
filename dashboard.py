@@ -8,15 +8,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import evaluateann
+from  evaluateann import dfinps as dfinps_test
 import datetime as dt
 from panel.widgets import FloatSlider as fs
 import datetime as dt
-from trainann import output_locations
+import itertools
+from bokeh.palettes import Set2_5 as palette
+#from trainann import output_locations
 
 # Some hard-coded stuff for now - will move to a YAML config file
 dir = os.path.dirname(os.path.realpath(__file__))
 inp_template = os.path.join(dir,'ann_inp.csv')
-dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['date'])
+dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['Time'])
 dfinps_global = dfinps.copy()
 start_date = dt.datetime(2014, 1, 1)
 end_date = dt.datetime(2014, 12, 31)
@@ -24,9 +27,12 @@ scale_df1 =pd.read_csv(os.path.join(dir,'input_scale.csv'),
                        index_col=0, parse_dates = ['month'])
 scale_df = scale_df1.copy()
 
+model_kind = 'ResNet'
+
+
 class SliderGroup:
     def __init__(self,input_loc):
-        sp = dict(start=0.20,  end=2, step=0.1, value=1,
+        sp = dict(start=0.80,  end=1.20, step=0.05, value=1,
                   orientation = 'vertical',direction ='rtl',
                   margin=8,height=150)
         self.input_loc = input_loc
@@ -54,7 +60,7 @@ def scale_inputs(inp_template,input_loc,scale_df,fs1,fs2,fs3,
                  fs4,fs5,fs6,fs7,fs8,fs9,fs10,fs11,fs12):
                  
     global dfinps_global
-    dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['date'])
+    dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['Time'])
 
     scale_df.loc[1,input_loc] = fs1
     scale_df.loc[2,input_loc] = fs2
@@ -72,34 +78,38 @@ def scale_inputs(inp_template,input_loc,scale_df,fs1,fs2,fs3,
     for mon in scale_df.index:
         dfmod = dfinps.loc[dfinps.index.month == mon ,input_loc]*scale_df.loc[mon,input_loc]
         dfinps_global.update(dfmod, overwrite=True)
+    #print(dfinps_global)
     return dfinps_global
 
 def make_input_plot(dfinp,input_loc,start_date,end_date):
     #print(dfinp.head())
     p = figure(title = "",x_axis_type='datetime')
-    p.line(source = dfinp,x='date',y=str(input_loc), line_color = 'blue',
+    p.line(source = dfinp,x='Time',y=str(input_loc), line_color = 'blue',
            line_dash = 'solid', line_width=1, legend_label=input_loc)
-    p.plot_height = 350
+    p.plot_height = 400
     p.plot_width = 700
     p.x_range = Range1d(start=start_date, end=end_date)
     return p
 
 def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
-                     refresh,listener):
+                     refresh,listener,model_kind):
+    colors = itertools.cycle(palette)
     refresh = refresh
     listener = listener
-    targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp)
-    print(pred_df.head())
-    p = figure(title = "",x_axis_type='datetime')
-    p.line(source = targ_df,x='index',y=str(selected_key_stations),
-           line_color = 'red', line_width=1, legend_label='Historical')
-    p.line(source = pred_df,x='date',y=str(selected_key_stations),
-           line_color = 'blue', line_width=1, legend_label='Predicted')
+    p = figure(title = selected_key_stations, x_axis_type='datetime')
+    for m in model_kind:
+        targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp,m)
+        p.line(source = targ_df,x='Time',y=str(selected_key_stations),
+            line_color = 'black', line_width=1, legend_label='Historical')
+        p.line(source = pred_df, x='Time', y=str(selected_key_stations),
+            line_color = next(colors), line_width=1, legend_label=m)
+
     p.plot_height = 500
     p.plot_width = 1000
     p.legend.location = 'top_left'
     p.yaxis.axis_label = 'EC (uS/cm)'
     p.xaxis.axis_label = 'Date'
+    p.legend.click_policy="hide"
     p.x_range = Range1d(start=start_date, end=end_date)
 
     tt = [
@@ -113,6 +123,14 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
     ))
 
     return p
+
+def evaluate_ann(selected_key_stations,dfinp,start_date,end_date,
+                     refresh,listener,model_kind):
+    refresh = refresh
+    listener = listener
+    targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp,model_kind[0])
+    df_widget = pn.widgets.Tabulator(pred_df)
+    return df_widget
 
 def listener(e1,e2,e3,e4,e5,e6):
     e1 = e1
@@ -128,21 +146,37 @@ def listener(e1,e2,e3,e4,e5,e6):
 inputlocs = ['northern_flow','exports']
 inputlocs_w = pn.widgets.Select(name='Input Location', options = inputlocs,
                                 value = 'northern_flow')
-variables = output_locations
-variables_w = pn.widgets.Select(name='Output Location', options = variables)
-architecture_w = pn.widgets.Select(name='ML Model', options = ['MLP', 'LSTM', 'GRU', 'ResNet'])
-dateselect_w = pn.widgets.DateRangeSlider(name='Date Range Slider',
+
+variables = ['RSMKL008', 'RSAN032', 'RSAN037', 'RSAC092', 'SLTRM004', 'ROLD024',
+             'CHVCT000', 'RSAN018', 'CHSWP003', 'CHDMC006', 'SLDUT007', 'RSAN072',
+             'OLD_MID', 'RSAN058', 'ROLD059', 'RSAN007', 'RSAC081', 'SLMZU025',
+             'RSAC075', 'SLMZU011', 'SLSUS012', 'SLCBN002', 'RSAC064']
+             
+variables_w = pn.widgets.Select(name='Output Location', options = variables, value = 'RSAC092')
+model_kind_w = pn.widgets.CheckBoxGroup(
+                    name='ML Model Selection', value = ['Res-LSTM'],
+                    options = ['Res-LSTM','Res-GRU','LSTM', 'GRU', 'ResNet'],
+                    inline=True)
+#model_kind_w = ['Res-LSTM','Res-GRU']
+dateselect_w = pn.widgets.DateRangeSlider(name='Date Range',
                                             start=dt.datetime(1990, 1, 1),
                                             end=dt.datetime(2019, 12, 31),
                                             value=(start_date, end_date),
                                             disabled =True)
+
+radio_group = pn.widgets.RadioButtonGroup(name='Test Selector',
+                options=['year1', 'year2', 'year3','year4','year5'], 
+                button_type='success')
+
 run_btn = pn.widgets.Button(name='Run ANN', button_type='primary')
 train_btn = pn.widgets.Button(name='Train ANN', button_type='primary')
 refresh_btn = pn.widgets.Button(name='Refresh Plot', button_type='default',width=50)
+#adjuster_w = pn.widgets.TextInput(name = 'Test', placeholder = 'modify')
 
 title_pane = pn.pane.Markdown('''
 ## DSM2 Emulator Dashboard
-Disclaimer: this dashboard is a prototype to demonstrate the functionality of the web-based user interface, and will be hosted for a limited time during its evaluation period.
+Disclaimer: this dashboard is a prototype to demonstrate the functionality of the
+ web-based user interface, and will be hosted for a limited time during its evaluation period.
   The results generated from this tool are still under review.  
   Your feeback is appreciated!
 [Leave Feeback](https://forms.gle/C6ysGxvxwqK1XY54A)
@@ -151,16 +185,17 @@ disclaimer_pane = pn.pane.Markdown('''
 Test
 ''')
 assumptions_pane = pn.pane.Markdown('''
-#### Hyperparameters
-MLP Network  
-Trained on historical DSM2 EC outputs from 1990-2019
+Qi, S.; He M.; Bai Z.; Ding Z.; Sandhu, P.; Chung, F.; Namadi, P.; 
+Zhou, Y.; Hoang, R.; Tom, B.; Anderson, J.; Roh, D.M. 
+Novel Salinity Modeling Using Deep Learning for the Sacramento–San
+Joaquin Delta of California. Water 2022, 14, 3628. 
+https://doi.org/10.3390/w14223628
 ''')
 
 feedback_pane = pn.pane.Markdown('''
 Thank you for evaluating the DSM2 Emulator Dashboard. Your feedback and suggestions are welcome.  
-
 [Leave Feeback](https://forms.gle/C6ysGxvxwqK1XY54A)
-''')
+''',background='whitesmoke')
 
 # Bindings
 
@@ -179,10 +214,10 @@ scale_sjr_flow = pn.bind(scale_inputs,scale_df = scale_df,
                            input_loc = sjr_flow.input_loc,inp_template = inp_template,
                            **sjr_flow.kwargs)
 
-net_delta_cu = SliderGroup('net_delta_cu')
-scale_net_delta_cu = pn.bind(scale_inputs,scale_df = scale_df,
-                           input_loc = net_delta_cu.input_loc,inp_template = inp_template,
-                           **net_delta_cu.kwargs)
+#net_delta_cu = SliderGroup('net_delta_cu')
+#scale_net_delta_cu = pn.bind(scale_inputs,scale_df = scale_df,
+#                           input_loc = net_delta_cu.input_loc,inp_template = inp_template,
+#                           **net_delta_cu.kwargs)
 
 sjr_vernalis_ec = SliderGroup('sjr_vernalis_ec')
 scale_sjr_vernalis_ec = pn.bind(scale_inputs,scale_df = scale_df,
@@ -199,13 +234,15 @@ listener_bnd = pn.bind(listener,
                        e1 = scale_northern_flow,
                        e2 = scale_exp,
                        e3 = scale_sjr_flow,
-                       e4 = scale_net_delta_cu,
+                       #e4 = scale_net_delta_cu,
+                       e4 = None,
                        e5 = scale_sjr_vernalis_ec,
                        e6 = scale_sac_greens_ec)
 
 # Dashboard Layout
 
 dash = pn.Column(title_pane,pn.Row(
+
     pn.Column(pn.pane.Markdown('### ANN Inputs - Input Scaler'),
             
             pn.Tabs(
@@ -227,11 +264,11 @@ dash = pn.Column(title_pane,pn.Row(
                 pn.bind(make_input_plot,dfinp=scale_sjr_flow,input_loc='sjr_flow',
                     start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
 
-                ("Net Delta Consumptive Use",
-                pn.Column(
-                pn.Row(*net_delta_cu.fs_set),
-                pn.bind(make_input_plot,dfinp=scale_net_delta_cu,input_loc='net_delta_cu',
-                    start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
+#                ("Net Delta Consumptive Use",
+#                pn.Column(
+#                pn.Row(*net_delta_cu.fs_set),
+#                pn.bind(make_input_plot,dfinp=scale_net_delta_cu,input_loc='net_delta_cu',
+#                    start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
 
                 ("SJR Vernalis EC",
                 pn.Column(
@@ -250,18 +287,49 @@ dash = pn.Column(title_pane,pn.Row(
             )
     ),
 
-    pn.Column(pn.pane.Markdown('### ANN Outputs'),variables_w,dateselect_w,
-              pn.bind(make_ts_plot_ANN,
-                      selected_key_stations=variables_w,
-                      dfinp = dfinps_global,
-                      start_date=dateselect_w.value[0],
-                      end_date=dateselect_w.value[1],
-                      refresh=refresh_btn, 
-                      listener = listener_bnd
-              ),
-              architecture_w,refresh_btn
+    pn.Column(pn.pane.Markdown('### ANN Outputs'),
+    pn.Tabs(
+        ('Plots',
+        pn.Column(
+            variables_w,
+            dateselect_w,
+            pn.bind(make_ts_plot_ANN,
+                selected_key_stations=variables_w,
+                dfinp = dfinps_global,
+                start_date=dateselect_w.value[0],
+                end_date=dateselect_w.value[1],
+                refresh=refresh_btn, 
+                listener = listener_bnd,
+                model_kind = model_kind_w
+            ),
+            model_kind_w,
+            refresh_btn
+        )),
+
+        ('Tabulated Outputs',
+        pn.Column(
+            pn.bind(evaluate_ann,
+                selected_key_stations=variables_w,
+                dfinp = dfinps_global,
+                start_date=dateselect_w.value[0],
+                end_date=dateselect_w.value[1],
+                refresh=refresh_btn, 
+                listener = listener_bnd,
+                model_kind = model_kind_w
+            ),
+        )),
     )
-))
+    )
+),
+assumptions_pane,
+feedback_pane,
+#radio_group,
+)
+
+#dfinps_test.to_csv('dfinps_test.csv')
+#dfinps_global.to_csv('dfinps_global.csv')
+
+#dash.show(title = "DSM2 ANN Emulator Dashboard")
 
 dash.servable(title = "DSM2 ANN Emulator Dashboard")
 

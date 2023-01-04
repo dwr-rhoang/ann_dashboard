@@ -29,13 +29,14 @@ cwd = os.getcwd()
 sys.path.append(cwd)
 gdrive_root_path = cwd
 
-data_file = "dsm2_ann_inputs_20220204.xlsx"
+data_file = "dsm2_ann_inputs_base_20220506.xlsx"
 data_path = os.path.join(cwd,data_file)
 
 num_sheets = {"dsm2_ann_BaselineData_20220120.xlsx":8,
               "dsm2_ann_inputs_20220204.xlsx":9,
               "dsm2_ann_inputs_20220215.xlsx":10,
-              "dsm2_ann_observed_15min.xlsx":9}
+              "dsm2_ann_observed_15min.xlsx":9,
+              "dsm2_ann_inputs_base_20220506.xlsx":10}
 num_dataset = {"dsm2_ann_inputs_20220204.xlsx":'simulated',
               "dsm2_ann_inputs_20220215.xlsx":'observed',
               "dsm2_ann_observed_15min.xlsx":'observed_15min'}
@@ -50,10 +51,10 @@ dfouts = df_inpout.loc[:,df_inpout.columns.isin(dflist[num_sheets[data_file]-1].
 print(dfinps)
 print(dfouts)
 
-#%%
 # read station names
 output_locations = list(dfouts.columns[~dfouts.columns.str.contains('_dup')])
 print(output_locations)
+#%%
 
 """Define station groups"""
 station_without_groups = {'all':output_locations}

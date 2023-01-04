@@ -31,8 +31,10 @@ example: model_str_def = 'c1d10x3x1_c1d10x3x1_f_d8_d2_o1'
 MLP; LSTM; GRU; ResNet
 '''
 ## 1. To train an MLP Network: (uncomment both 2 lines below):
-model_str_def = 'd8_d4_o1'
-input_prepro_option=1
+#model_str_def = 'd8_d4_o1'
+input_prepro_option=2
+model_str_def = "residual_lstm_8_2"
+scenario_name = 'Tune_RSAC_RSAN_n_observed_first70'
 
 # 2. To train an LSTM Network (uncomment both 2 lines below):
 # model_str_def = 'lstm8_lstm4_f_o1'
