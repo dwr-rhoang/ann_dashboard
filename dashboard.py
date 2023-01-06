@@ -8,7 +8,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import evaluateann
-from  evaluateann import dfinps as dfinps_test
 import datetime as dt
 from panel.widgets import FloatSlider as fs
 import datetime as dt
@@ -21,14 +20,15 @@ dir = os.path.dirname(os.path.realpath(__file__))
 inp_template = os.path.join(dir,'ann_inp.csv')
 dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['Time'])
 dfinps_global = dfinps.copy()
-start_date = dt.datetime(2014, 1, 1)
-end_date = dt.datetime(2014, 12, 31)
+dfouts = pd.read_csv('dsm2_hist_ec_output.csv',index_col=0, parse_dates = ['Time'])
+#start_date = dt.datetime(2014, 1, 1)
+#end_date = dt.datetime(2014, 12, 31)
+start_date = dt.datetime(2013, 10, 1)
+end_date = dt.datetime(2014, 9, 30)
+
 scale_df1 =pd.read_csv(os.path.join(dir,'input_scale.csv'),
                        index_col=0, parse_dates = ['month'])
 scale_df = scale_df1.copy()
-
-model_kind = 'ResNet'
-
 
 class SliderGroup:
     def __init__(self,input_loc):
@@ -98,7 +98,7 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
     listener = listener
     p = figure(title = selected_key_stations, x_axis_type='datetime')
     for m in model_kind:
-        targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp,m)
+        targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp,dfouts,m)
         p.line(source = targ_df,x='Time',y=str(selected_key_stations),
             line_color = 'black', line_width=1, legend_label='Historical')
         p.line(source = pred_df, x='Time', y=str(selected_key_stations),
@@ -128,7 +128,7 @@ def evaluate_ann(selected_key_stations,dfinp,start_date,end_date,
                      refresh,listener,model_kind):
     refresh = refresh
     listener = listener
-    targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp,model_kind[0])
+    targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp,dfouts,model_kind[0])
     df_widget = pn.widgets.Tabulator(pred_df)
     return df_widget
 

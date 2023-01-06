@@ -32,13 +32,14 @@ output_stations = None
 exclude_input_variable='Martinez_input'
 
 
-data_file = "dsm2_ann_inputs_base_20220506.xlsx"
+data_file = "dsm2_ann_inputs_historical_20220506.xlsx"
 num_sheets = 10
 ndays=118
 window_size=0
 nwindows=0
 data_path = os.path.join(cwd,data_file)
 
+'''
 dflist = [pd.read_excel(data_path,i,index_col=0,parse_dates=True) for i in range(num_sheets)]
 df_inpout = pd.concat(dflist[0:num_sheets],axis=1).dropna(axis=0)
 dfinps = df_inpout.loc[:,~df_inpout.columns.isin(dflist[num_sheets-1].columns)]
@@ -56,13 +57,46 @@ if output_stations is None:
                 name_mapping[s] = ss
     output_stations = list(name_mapping.values())
     print()
+print(name_mapping)
+print(output_stations)
+print(dfouts)
 
-dfouts = dfouts.rename(columns=name_mapping)[output_stations]
+name_mapping = {'CHDMC006-CVP INTAKE': 'CHDMC006',
+                'CHSWP003-CCFB_INTAKE': 'CHSWP003',
+                'CHVCT000-VICTORIA INTAKE': 'CHVCT000',
+                'OLD_MID-OLD RIVER NEAR MIDDLE RIVER':'OLD_MID',
+                'ROLD024-OLD RIVER AT BACON ISLAND': 'ROLD024',
+                'ROLD059-OLD RIVER AT TRACY BLVD': 'ROLD059',
+                'RSAC064-SACRAMENTO R AT PORT CHICAGO': 'RSAC064',
+                'RSAC075-MALLARDISLAND': 'RSAC075',
+                'RSAC081-COLLINSVILLE': 'RSAC081',
+                'RSAC092-EMMATON': 'RSAC092',
+                'RSAN007-ANTIOCH': 'RSAN007',
+                'RSAN018-JERSEYPOINT': 'RSAN018',
+                'RSAN032-SACRAMENTO R AT SAN ANDREAS LANDING': 'RSAN032',
+                'RSAN037-SAN JOAQUIN R AT PRISONERS POINT': 'RSAN037',
+                'RSAN058-ROUGH AND READY ISLAND': 'RSAN058',
+                'RSAN072-SAN JOAQUIN R AT BRANDT BRIDGE': 'RSAN072',
+                'RSMKL008-S FORK MOKELUMNE AT TERMINOUS': 'RSMKL008',
+                'SLCBN002-CHADBOURNE SLOUGH NR SUNRISE DUCK CLUB': 'SLCBN002',
+                'SLDUT007-DUTCH SLOUGH': 'SLDUT007',
+                'SLMZU011-MONTEZUMA SL AT BELDONS LANDING': 'SLMZU011',
+                'SLMZU025-MONTEZUMA SL AT NATIONAL STEEL': 'SLMZU025',
+                'SLSUS012-SUISUN SL NEAR VOLANTI SL': 'SLSUS012',
+                'SLTRM004-THREE MILE SLOUGH NR SAN JOAQUIN R': 'SLTRM004'}
+'''
+output_stations = ['CHDMC006', 'CHSWP003', 'CHVCT000', 'OLD_MID', 'ROLD024', 'ROLD059',
+                  'RSAC064', 'RSAC075', 'RSAC081', 'RSAC092', 'RSAN007', 'RSAN018',
+                  'RSAN032', 'RSAN037', 'RSAN058', 'RSAN072', 'RSMKL008', 'SLCBN002',
+                  'SLDUT007', 'SLMZU011', 'SLMZU025', 'SLSUS012', 'SLTRM004']
+
+#dfouts = pd.read_csv('dsm2_hist_ec_output.csv',index_col=0, parse_dates = ['Time'])
+
 def mse_loss_masked(y_true, y_pred):
     squared_diff = tf.reduce_sum(tf.math.squared_difference(y_pred[y_true>0],y_true[y_true>0]))
     return squared_diff/(tf.reduce_sum(tf.cast(y_true>0, tf.float32))+0.01)
 
-def run_ann(selected_key_station,dfinps,model_kind):
+def run_ann(selected_key_station,dfinps,dfouts,model_kind):
     selected_output_variables = output_stations
 
     model_path_dict = {'Res-LSTM':'mtl_i118_residual_lstm_8_2_Tune_RSAC_RSAN_n_observed_first70',
@@ -97,7 +131,8 @@ def run_ann(selected_key_station,dfinps,model_kind):
 
 
 #selected_key_stations = 'RSAC092'
-#test_df_targ,test_df_pred = run_ann(selected_key_stations,dfinps)
+#dfinps = pd.read_csv('ann_inp.csv',index_col=0, parse_dates = ['Time'])
+#test_df_targ,test_df_pred = run_ann(selected_key_stations,dfinps,dfouts,'Res-LSTM')
 #test_df_targ.to_csv('eval_ann_targ.csv')
 #test_df_pred.to_csv('eval_ann_pred.csv')
 
