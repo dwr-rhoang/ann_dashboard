@@ -13,10 +13,17 @@ from panel.widgets import FloatSlider as fs
 import datetime as dt
 import itertools
 from bokeh.palettes import Set2_5 as palette
-#from trainann import output_locations
+import yaml
+
 
 # Some hard-coded stuff for now - will move to a YAML config file
 dir = os.path.dirname(os.path.realpath(__file__))
+
+with open(os.path.join(dir,'config.yaml'), 'r') as f:
+    config = yaml.safe_load(f)
+
+input_dict = config['input_dict']
+
 inp_template = os.path.join(dir,'ann_inp.csv')
 dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['Time'])
 dfinps_global = dfinps.copy()
@@ -49,12 +56,14 @@ class SliderGroup:
         self.fs11 = fs(name='Nov', **sp)
         self.fs12 = fs(name='Dec', **sp)
 
-        self.fs_set=[self.fs1,self.fs2,self.fs3,self.fs4,self.fs5,self.fs6,
-                    self.fs7,self.fs8,self.fs9,self.fs10,self.fs11,self.fs12]
+        self.fs_set=[self.fs10,self.fs11,self.fs12,self.fs1,
+                     self.fs2,self.fs3,self.fs4,self.fs5,self.fs6,
+                     self.fs7,self.fs8,self.fs9]
 
-        self.kwargs = dict(fs1=self.fs1,fs2=self.fs2,fs3=self.fs3,fs4=self.fs4,
-                 fs5=self.fs5,fs6=self.fs6,fs7=self.fs7,fs8=self.fs8,
-                 fs9=self.fs9,fs10=self.fs10,fs11=self.fs11,fs12=self.fs12)
+        self.kwargs = dict(fs10=self.fs10,fs11=self.fs11,fs12=self.fs12,
+                     fs1=self.fs1,fs2=self.fs2,fs3=self.fs3,fs4=self.fs4,
+                     fs5=self.fs5,fs6=self.fs6,fs7=self.fs7,fs8=self.fs8,
+                     fs9=self.fs9,)
 
 def scale_inputs(inp_template,input_loc,scale_df,fs1,fs2,fs3,
                  fs4,fs5,fs6,fs7,fs8,fs9,fs10,fs11,fs12):
@@ -81,14 +90,24 @@ def scale_inputs(inp_template,input_loc,scale_df,fs1,fs2,fs3,
     #print(dfinps_global)
     return dfinps_global
 
-def make_input_plot(dfinp,input_loc,start_date,end_date):
-    #print(dfinp.head())
+def make_input_plot(inp_template,dfinp,input_loc,start_date,end_date):
+    # Determine the min and max y-axis limits from given start and end dates
+    dfinp_window = dfinp.loc[(dfinp.index>start_date) &
+                             (dfinp.index<end_date)]
+    y_min = dfinp_window[input_loc].min()
+    y_max = dfinp_window[input_loc].max()*1.5
+
     p = figure(title = "",x_axis_type='datetime')
     p.line(source = dfinp,x='Time',y=str(input_loc), line_color = 'blue',
-           line_dash = 'solid', line_width=1, legend_label=input_loc)
+           line_dash = 'solid', line_width=1.5, legend_label=input_loc)
+    p.line(source = inp_template,x='Time',y=str(input_loc), line_color = 'silver',
+           line_dash = 'solid', line_width=1, line_alpha = 0.5,
+           legend_label=f'{input_loc} (Historical)')
     p.plot_height = 400
     p.plot_width = 700
     p.x_range = Range1d(start=start_date, end=end_date)
+    p.y_range = Range1d(y_min,y_max)
+    p.yaxis.axis_label = input_dict[input_loc]
     return p
 
 def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
@@ -100,7 +119,7 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
     for m in model_kind:
         targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp,dfouts,m)
         p.line(source = targ_df,x='Time',y=str(selected_key_stations),
-            line_color = 'black', line_width=1, legend_label='Historical')
+            line_color = 'black', line_width=1, legend_label='Historical (DSM2 Simulated)')
         p.line(source = pred_df, x='Time', y=str(selected_key_stations),
             line_color = next(colors), line_width=1, legend_label=m)
 
@@ -128,7 +147,8 @@ def evaluate_ann(selected_key_stations,dfinp,start_date,end_date,
                      refresh,listener,model_kind):
     refresh = refresh
     listener = listener
-    targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp,dfouts,model_kind[0])
+    targ_df,pred_df = evaluateann.run_ann(selected_key_stations,
+                                          dfinp,dfouts,model_kind[0])
     df_widget = pn.widgets.Tabulator(pred_df)
     return df_widget
 
@@ -249,37 +269,43 @@ dash = pn.Column(title_pane,pn.Row(
                 ("Northern Flow",
                 pn.Column(
                 pn.Row(*northern_flow.fs_set),
-                pn.bind(make_input_plot,dfinp=scale_northern_flow,input_loc='northern_flow',
+                pn.bind(make_input_plot,inp_template = dfinps,
+                    dfinp=scale_northern_flow,input_loc='northern_flow',
                     start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
 
                 ("Exports",
                 pn.Column(
                 pn.Row(*exports.fs_set),
-                pn.bind(make_input_plot,dfinp=scale_exp,input_loc='exports',
+                pn.bind(make_input_plot,inp_template = dfinps,
+                    dfinp=scale_exp,input_loc='exports',
                     start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
 
                 ("SJR flow",
                 pn.Column(
                 pn.Row(*sjr_flow.fs_set),
-                pn.bind(make_input_plot,dfinp=scale_sjr_flow,input_loc='sjr_flow',
+                pn.bind(make_input_plot,inp_template = dfinps,
+                    dfinp=scale_sjr_flow,input_loc='sjr_flow',
                     start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
 
 #                ("Net Delta Consumptive Use",
 #                pn.Column(
 #                pn.Row(*net_delta_cu.fs_set),
-#                pn.bind(make_input_plot,dfinp=scale_net_delta_cu,input_loc='net_delta_cu',
+#                pn.bind(make_input_plot,inp_template = dfinps,
+#                        dfinp=scale_net_delta_cu,input_loc='net_delta_cu',
 #                    start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
 
                 ("SJR Vernalis EC",
                 pn.Column(
                 pn.Row(*sjr_vernalis_ec.fs_set),
-                pn.bind(make_input_plot,dfinp=scale_sjr_vernalis_ec,input_loc='sjr_vernalis_ec',
+                pn.bind(make_input_plot,inp_template = dfinps,
+                    dfinp=scale_sjr_vernalis_ec,input_loc='sjr_vernalis_ec',
                     start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
 
                 ("Sac Greens EC",
                 pn.Column(
                 pn.Row(*sac_greens_ec.fs_set),
-                pn.bind(make_input_plot,dfinp=scale_sac_greens_ec,input_loc='sac_greens_ec',
+                pn.bind(make_input_plot,inp_template = dfinps,
+                    dfinp=scale_sac_greens_ec,input_loc='sac_greens_ec',
                     start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
 
                 ("DXC",

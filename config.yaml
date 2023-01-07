@@ -1,0 +1,6 @@
+input_dict:
+  northern_flow: Flow (cfs)
+  exports: Flow (cfs)
+  sjr_flow: Flow (cfs)
+  sjr_vernalis_ec: EC (uS/cm)
+  sac_greens_ec: EC (uS/cm)

@@ -116,7 +116,7 @@ def run_ann(selected_key_station,dfinps,dfouts,model_kind):
     print('Load Model')
     annmodel = annutils.load_model(os.path.join(gdrive_root_path,'models', model_path_prefix),
                                     custom_objects={"mse_loss_masked": mse_loss_masked})
-    print(annmodel.xscaler.min_val)
+    #print(annmodel.xscaler.min_val)
     print('Predict')
     dfp=annutils.predict(annmodel.model, dfinps, annmodel.xscaler,
                             annmodel.yscaler,columns=selected_output_variables,
