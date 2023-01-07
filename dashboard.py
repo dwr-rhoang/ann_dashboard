@@ -1,16 +1,15 @@
-from bokeh.plotting import figure, save, show
+from bokeh.plotting import figure #, save, show
 from bokeh.models import Range1d, HoverTool
-from bokeh.io import export_png
-from operator import index
-from posixpath import dirname
+#from bokeh.io import export_png
+#from operator import index
+#from posixpath import dirname
 import panel as pn
 import pandas as pd
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import os
 import evaluateann
 import datetime as dt
 from panel.widgets import FloatSlider as fs
-import datetime as dt
 import itertools
 from bokeh.palettes import Set2_5 as palette
 import yaml
@@ -23,7 +22,10 @@ with open(os.path.join(dir,'config.yaml'), 'r') as f:
     config = yaml.safe_load(f)
 
 input_dict = config['input_dict']
-
+name_map = config['name_mapping']
+name_map_swap = {v: k for k, v in name_map.items()}
+print(name_map_swap)
+variables = config['output_vars']
 inp_template = os.path.join(dir,'ann_inp.csv')
 dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['Time'])
 dfinps_global = dfinps.copy()
@@ -115,7 +117,8 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
     colors = itertools.cycle(palette)
     refresh = refresh
     listener = listener
-    p = figure(title = selected_key_stations, x_axis_type='datetime')
+    p = figure(title = f'{name_map[selected_key_stations]} ({selected_key_stations})',
+               x_axis_type='datetime')
     for m in model_kind:
         targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp,dfouts,m)
         p.line(source = targ_df,x='Time',y=str(selected_key_stations),
@@ -167,17 +170,12 @@ inputlocs = ['northern_flow','exports']
 inputlocs_w = pn.widgets.Select(name='Input Location', options = inputlocs,
                                 value = 'northern_flow')
 
-variables = ['RSMKL008', 'RSAN032', 'RSAN037', 'RSAC092', 'SLTRM004', 'ROLD024',
-             'CHVCT000', 'RSAN018', 'CHSWP003', 'CHDMC006', 'SLDUT007', 'RSAN072',
-             'OLD_MID', 'RSAN058', 'ROLD059', 'RSAN007', 'RSAC081', 'SLMZU025',
-             'RSAC075', 'SLMZU011', 'SLSUS012', 'SLCBN002', 'RSAC064']
-             
-variables_w = pn.widgets.Select(name='Output Location', options = variables, value = 'RSAC092')
+variables_w = pn.widgets.Select(name='Output Location', options = name_map_swap)
 model_kind_w = pn.widgets.CheckBoxGroup(
                     name='ML Model Selection', value = ['Res-LSTM'],
                     options = ['Res-LSTM','Res-GRU','LSTM', 'GRU', 'ResNet'],
                     inline=True)
-#model_kind_w = ['Res-LSTM','Res-GRU']
+
 dateselect_w = pn.widgets.DateRangeSlider(name='Date Range',
                                             start=dt.datetime(1990, 1, 1),
                                             end=dt.datetime(2019, 12, 31),
