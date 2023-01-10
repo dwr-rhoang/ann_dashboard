@@ -24,16 +24,16 @@ with open(os.path.join(dir,'config.yaml'), 'r') as f:
 input_dict = config['input_dict']
 name_map = config['name_mapping']
 name_map_swap = {v: k for k, v in name_map.items()}
-print(name_map_swap)
+#print(name_map_swap)
 variables = config['output_vars']
 inp_template = os.path.join(dir,'ann_inp.csv')
 dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['Time'])
 dfinps_global = dfinps.copy()
 dfouts = pd.read_csv('dsm2_hist_ec_output.csv',index_col=0, parse_dates = ['Time'])
-#start_date = dt.datetime(2014, 1, 1)
-#end_date = dt.datetime(2014, 12, 31)
-start_date = dt.datetime(2013, 10, 1)
-end_date = dt.datetime(2014, 9, 30)
+wateryear = 2014
+start_date = dt.datetime(wateryear-1, 10, 1)
+end_date = dt.datetime(wateryear, 9, 30)
+
 
 scale_df1 =pd.read_csv(os.path.join(dir,'input_scale.csv'),
                        index_col=0, parse_dates = ['month'])
@@ -92,6 +92,13 @@ def scale_inputs(inp_template,input_loc,scale_df,fs1,fs2,fs3,
     #print(dfinps_global)
     return dfinps_global
 
+def make_sd(wateryear):
+    start_date = dt.datetime(int(wateryear)-1, 10, 1)
+    return start_date
+def make_ed(wateryear):
+    end_date = dt.datetime(int(wateryear), 9, 30)
+    return end_date
+
 def make_input_plot(inp_template,dfinp,input_loc,start_date,end_date):
     # Determine the min and max y-axis limits from given start and end dates
     dfinp_window = dfinp.loc[(dfinp.index>start_date) &
@@ -114,7 +121,9 @@ def make_input_plot(inp_template,dfinp,input_loc,start_date,end_date):
 
 def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
                      refresh,listener,model_kind):
+    
     colors = itertools.cycle(palette)
+
     refresh = refresh
     listener = listener
     p = figure(title = f'{name_map[selected_key_stations]} ({selected_key_stations})',
@@ -180,11 +189,16 @@ dateselect_w = pn.widgets.DateRangeSlider(name='Date Range',
                                             start=dt.datetime(1990, 1, 1),
                                             end=dt.datetime(2019, 12, 31),
                                             value=(start_date, end_date),
-                                            disabled =True)
+                                            disabled =False)
 
-radio_group = pn.widgets.RadioButtonGroup(name='Test Selector',
-                options=['year1', 'year2', 'year3','year4','year5'], 
-                button_type='success')
+yearselect_w = pn.widgets.RadioButtonGroup(name='WY Selector',
+                options=['1991','1992','1993','1994',
+                         '1995','1996','1997','1998','1999','2000',
+                         '2001','2002','2003','2004','2005','2006',
+                         '2007','2008','2009','2010','2011','2012',
+                         '2013','2014', '2015','2016','2017','2018'], 
+                value = '2014',
+                button_type='primary')
 
 run_btn = pn.widgets.Button(name='Run ANN', button_type='primary')
 train_btn = pn.widgets.Button(name='Train ANN', button_type='primary')
@@ -193,12 +207,8 @@ refresh_btn = pn.widgets.Button(name='Refresh Plot', button_type='default',width
 
 title_pane = pn.pane.Markdown('''
 ## DSM2 Emulator Dashboard
-Disclaimer: this dashboard is a prototype to demonstrate the functionality of the
- web-based user interface, and will be hosted for a limited time during its evaluation period.
-  The results generated from this tool are still under review.  
-  Your feeback is appreciated!
-[Leave Feeback](https://forms.gle/C6ysGxvxwqK1XY54A)
-''',background='whitesmoke')
+
+''',background='white')
 disclaimer_pane = pn.pane.Markdown('''
 Test
 ''')
@@ -211,11 +221,14 @@ https://doi.org/10.3390/w14223628
 ''')
 
 feedback_pane = pn.pane.Markdown('''
+Disclaimer: this dashboard is still in beta.  
 Thank you for evaluating the DSM2 Emulator Dashboard. Your feedback and suggestions are welcome.  
 [Leave Feeback](https://forms.gle/C6ysGxvxwqK1XY54A)
-''',background='whitesmoke')
+''',background='white')
 
 # Bindings
+
+
 
 northern_flow = SliderGroup('northern_flow')
 scale_northern_flow = pn.bind(scale_inputs,scale_df = scale_df,
@@ -257,9 +270,14 @@ listener_bnd = pn.bind(listener,
                        e5 = scale_sjr_vernalis_ec,
                        e6 = scale_sac_greens_ec)
 
+
+sd_bnd = pn.bind(make_sd,wateryear = yearselect_w)
+ed_bnd = pn.bind(make_ed,wateryear = yearselect_w)
 # Dashboard Layout
 
-dash = pn.Column(title_pane,pn.Row(
+dash = pn.Column(title_pane,
+                 pn.pane.Markdown('### Simulation Period (WY)'),
+                 yearselect_w,pn.Row(
 
     pn.Column(pn.pane.Markdown('### ANN Inputs - Input Scaler'),
             
@@ -269,45 +287,47 @@ dash = pn.Column(title_pane,pn.Row(
                 pn.Row(*northern_flow.fs_set),
                 pn.bind(make_input_plot,inp_template = dfinps,
                     dfinp=scale_northern_flow,input_loc='northern_flow',
-                    start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
+                    start_date=sd_bnd,end_date=ed_bnd))),
 
                 ("Exports",
                 pn.Column(
                 pn.Row(*exports.fs_set),
                 pn.bind(make_input_plot,inp_template = dfinps,
                     dfinp=scale_exp,input_loc='exports',
-                    start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
+                    start_date=sd_bnd,end_date=ed_bnd))),
 
                 ("SJR flow",
                 pn.Column(
                 pn.Row(*sjr_flow.fs_set),
                 pn.bind(make_input_plot,inp_template = dfinps,
                     dfinp=scale_sjr_flow,input_loc='sjr_flow',
-                    start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
+                    start_date=sd_bnd,end_date=ed_bnd))),
 
 #                ("Net Delta Consumptive Use",
 #                pn.Column(
 #                pn.Row(*net_delta_cu.fs_set),
 #                pn.bind(make_input_plot,inp_template = dfinps,
 #                        dfinp=scale_net_delta_cu,input_loc='net_delta_cu',
-#                    start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
+#                    start_date=sd_bnd,end_date=ed_bnd))),
 
                 ("SJR Vernalis EC",
                 pn.Column(
                 pn.Row(*sjr_vernalis_ec.fs_set),
                 pn.bind(make_input_plot,inp_template = dfinps,
                     dfinp=scale_sjr_vernalis_ec,input_loc='sjr_vernalis_ec',
-                    start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
+                    start_date=sd_bnd,end_date=ed_bnd))),
 
                 ("Sac Greens EC",
                 pn.Column(
                 pn.Row(*sac_greens_ec.fs_set),
                 pn.bind(make_input_plot,inp_template = dfinps,
                     dfinp=scale_sac_greens_ec,input_loc='sac_greens_ec',
-                    start_date=dateselect_w.value[0],end_date=dateselect_w.value[1]))),
+                    start_date=sd_bnd,end_date=ed_bnd))),
 
-                ("DXC",
-                pn.Column()),
+                #("DXC",
+                #pn.Column()),
+                
+
             )
     ),
 
@@ -316,12 +336,12 @@ dash = pn.Column(title_pane,pn.Row(
         ('Plots',
         pn.Column(
             variables_w,
-            dateselect_w,
+            
             pn.bind(make_ts_plot_ANN,
                 selected_key_stations=variables_w,
                 dfinp = dfinps_global,
-                start_date=dateselect_w.value[0],
-                end_date=dateselect_w.value[1],
+                start_date = sd_bnd,
+                end_date = ed_bnd,
                 refresh=refresh_btn, 
                 listener = listener_bnd,
                 model_kind = model_kind_w
@@ -332,15 +352,15 @@ dash = pn.Column(title_pane,pn.Row(
 
         ('Tabulated Outputs',
         pn.Column(
-            pn.bind(evaluate_ann,
-                selected_key_stations=variables_w,
-                dfinp = dfinps_global,
-                start_date=dateselect_w.value[0],
-                end_date=dateselect_w.value[1],
-                refresh=refresh_btn, 
-                listener = listener_bnd,
-                model_kind = model_kind_w
-            ),
+            #pn.bind(evaluate_ann,
+            #    selected_key_stations=variables_w,
+            #    dfinp = dfinps_global,
+            #    start_date=dateselect_w.value[0],
+            #    end_date=dateselect_w.value[1],
+            #    refresh=refresh_btn, 
+            #    listener = listener_bnd,
+            #    model_kind = model_kind_w
+            #),
         )),
     )
     )

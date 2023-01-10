@@ -5,6 +5,9 @@ input_dict:
   sjr_vernalis_ec: EC (uS/cm)
   sac_greens_ec: EC (uS/cm)
 
+water_yrs: #toDo
+  - 2014
+
 output_vars:
   - RSMKL008
   - RSAN032
