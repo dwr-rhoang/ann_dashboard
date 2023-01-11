@@ -1,5 +1,5 @@
 from bokeh.plotting import figure #, save, show
-from bokeh.models import Range1d, HoverTool
+from bokeh.models import Range1d, HoverTool, Label
 #from bokeh.io import export_png
 #from operator import index
 #from posixpath import dirname
@@ -43,7 +43,7 @@ class SliderGroup:
     def __init__(self,input_loc):
         sp = dict(start=0.80,  end=1.20, step=0.05, value=1,
                   orientation = 'vertical',direction ='rtl',
-                  margin=10,height=100)
+                  margin=10, height=100)
         self.input_loc = input_loc
         self.fs1 = fs(name='Jan', **sp)
         self.fs2 = fs(name='Feb', **sp)
@@ -103,21 +103,48 @@ def make_input_plot(inp_template,dfinp,input_loc,start_date,end_date):
     # Determine the min and max y-axis limits from given start and end dates
     dfinp_window = dfinp.loc[(dfinp.index>start_date) &
                              (dfinp.index<end_date)]
+    hist_window = inp_template.loc[(inp_template.index>start_date) &
+                             (inp_template.index<end_date)]
+
     y_min = dfinp_window[input_loc].min()
     y_max = dfinp_window[input_loc].max()*1.5
+    date_list = pd.date_range(start = start_date, periods=12, freq='MS')
+    dfinp_window_avg = dfinp_window.groupby(dfinp_window.index.month).mean()
+    hist_window_avg = hist_window.groupby(hist_window.index.month).mean()
 
     p = figure(title = "",x_axis_type='datetime')
     p.line(source = dfinp,x='Time',y=str(input_loc), line_color = 'blue',
-           line_dash = 'solid', line_width=1.5, legend_label=input_loc)
+           line_dash = 'solid', line_width=1.5, legend_label=f'{input_loc} (scaled)')
     p.line(source = inp_template,x='Time',y=str(input_loc), line_color = 'silver',
            line_dash = 'solid', line_width=1, line_alpha = 0.5,
-           legend_label=f'{input_loc} (Historical)')
-    p.plot_height = 400
+           legend_label=f'{input_loc} (historical)')
+    
+    # Styling attributes.
+    p.plot_height = 415
     p.plot_width = 700
     p.x_range = Range1d(start=start_date, end=end_date)
+    p.xaxis.ticker.desired_num_ticks = 12
     p.y_range = Range1d(y_min,y_max)
     p.yaxis.axis_label = input_dict[input_loc]
 
+    # Add data labels.
+    for d in date_list:
+        #print(d)
+        lbl_scaled = Label(x=d, y=290, x_units='data', y_units='screen',
+                        text=str(round(dfinp_window_avg[input_loc][d.month])),
+                        text_font_size='8pt', text_color='blue', x_offset=10)
+        lbl_hist = Label(x=d, y=275, x_units='data', y_units='screen',
+                        text=str(round(hist_window_avg[input_loc][d.month])),
+                        text_font_size='8pt', text_color='silver', x_offset=10)
+        p.add_layout(lbl_scaled)
+        p.add_layout(lbl_hist)
+    
+    annot_1 = Label(x=start_date, y=305, x_units='data', y_units='screen',
+                    text='Monthly Average (cfs):',
+                    text_font_size='10pt', text_color='black', x_offset=10)
+    p.add_layout(annot_1)
+
+    # Tools and tooltips.
     tt = [
     ("Value:", "$y{0,0.0}"),
     ("Date:", "$x{%F}"),
@@ -127,6 +154,8 @@ def make_input_plot(inp_template,dfinp,input_loc,start_date,end_date):
         tooltips = tt,
         formatters = {'$x':'datetime'}
     ))
+    p.toolbar.active_drag = None
+
     return p
 
 def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
@@ -141,18 +170,20 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
     for m in model_kind:
         targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp,dfouts,m)
         p.line(source = targ_df,x='Time',y=str(selected_key_stations),
-            line_color = 'black', line_width=1, legend_label='Historical (DSM2 Simulated)')
+            line_color = 'black', line_width=1, legend_label='Historical (DSM2 simulated)')
         p.line(source = pred_df, x='Time', y=str(selected_key_stations),
             line_color = next(colors), line_width=1, legend_label=m)
 
+    # Styling attributes.
     p.plot_height = 500
     p.plot_width = 1000
     p.legend.location = 'top_left'
     p.yaxis.axis_label = 'EC (uS/cm)'
     p.xaxis.axis_label = 'Date'
-    p.legend.click_policy="hide"
+
     p.x_range = Range1d(start=start_date, end=end_date)
 
+    # Tools and tooltips.
     tt = [
     ("Value:", "$y{0,0.0}"),
     ("Date:", "$x{%F}"),
@@ -162,7 +193,9 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
         tooltips = tt,
         formatters = {'$x':'datetime'}
     ))
-
+    p.toolbar.active_drag = None
+    p.legend.click_policy="hide"
+    
     return p
 
 def evaluate_ann(selected_key_stations,dfinp,start_date,end_date,
@@ -223,9 +256,10 @@ disclaimer_pane = pn.pane.Markdown('''
 Test
 ''')
 assumptions_pane = pn.pane.Markdown('''
+#### References  
 Qi, S.; He M.; Bai Z.; Ding Z.; Sandhu, P.; Chung, F.; Namadi, P.; 
 Zhou, Y.; Hoang, R.; Tom, B.; Anderson, J.; Roh, D.M. 
-Novel Salinity Modeling Using Deep Learning for the Sacramento–San
+Novel Salinity Modeling Using Deep Learning for the Sacramento—San
 Joaquin Delta of California. Water 2022, 14, 3628. 
 https://doi.org/10.3390/w14223628
 ''')
