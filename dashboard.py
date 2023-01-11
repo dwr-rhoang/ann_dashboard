@@ -410,7 +410,6 @@ dash = pn.Column(title_pane,
     )
 ),
 assumptions_pane,
-feedback_pane,
 #radio_group,
 )
 
