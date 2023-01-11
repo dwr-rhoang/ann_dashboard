@@ -43,7 +43,7 @@ class SliderGroup:
     def __init__(self,input_loc):
         sp = dict(start=0.80,  end=1.20, step=0.05, value=1,
                   orientation = 'vertical',direction ='rtl',
-                  margin=8,height=150)
+                  margin=10,height=100)
         self.input_loc = input_loc
         self.fs1 = fs(name='Jan', **sp)
         self.fs2 = fs(name='Feb', **sp)
@@ -117,6 +117,16 @@ def make_input_plot(inp_template,dfinp,input_loc,start_date,end_date):
     p.x_range = Range1d(start=start_date, end=end_date)
     p.y_range = Range1d(y_min,y_max)
     p.yaxis.axis_label = input_dict[input_loc]
+
+    tt = [
+    ("Value:", "$y{0,0.0}"),
+    ("Date:", "$x{%F}"),
+    ]
+
+    p.add_tools(HoverTool(
+        tooltips = tt,
+        formatters = {'$x':'datetime'}
+    ))
     return p
 
 def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
