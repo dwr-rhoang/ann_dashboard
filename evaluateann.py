@@ -4,16 +4,11 @@ import pandas as pd
 import tensorflow as tf
 import holoviews as hv
 hv.extension('bokeh')
-import annutils
+from annutils import load_model, predict
 
 cwd = os.getcwd()
 sys.path.append(cwd)
 gdrive_root_path = cwd
-
-#observed_stations_ordered_by_median = ['RSMKL008', 'RSAN032', 'RSAN037', 'RSAC092', 'SLTRM004', 'ROLD024',
-#                                       'CHVCT000', 'RSAN018', 'CHSWP003', 'CHDMC006', 'SLDUT007', 'RSAN072',
-#                                       'OLD_MID', 'RSAN058', 'ROLD059', 'RSAN007', 'RSAC081', 'SLMZU025',
-#                                       'RSAC075', 'SLMZU011', 'SLSUS012', 'SLCBN002', 'RSAC064']
 
 ndays=118
 window_size=0
@@ -46,11 +41,11 @@ def run_ann(selected_key_station,dfinps,dfouts,model_kind):
             for station in selected_output_variables],end='\n')
 
     print('Load Model')
-    annmodel = annutils.load_model(os.path.join(gdrive_root_path,'models', model_path_prefix),
+    annmodel = load_model(os.path.join(gdrive_root_path,'models', model_path_prefix),
                                     custom_objects={"mse_loss_masked": mse_loss_masked})
     #print(annmodel.xscaler.min_val)
     print('Predict')
-    dfp=annutils.predict(annmodel.model, dfinps, annmodel.xscaler,
+    dfp=predict(annmodel.model, dfinps, annmodel.xscaler,
                             annmodel.yscaler,columns=selected_output_variables,
                             ndays=ndays,window_size=window_size,nwindows=nwindows)
 
