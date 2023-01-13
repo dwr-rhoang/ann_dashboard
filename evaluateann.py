@@ -10,20 +10,14 @@ cwd = os.getcwd()
 sys.path.append(cwd)
 gdrive_root_path = cwd
 
-observed_stations_ordered_by_median = ['RSMKL008', 'RSAN032', 'RSAN037', 'RSAC092', 'SLTRM004', 'ROLD024',
-                                       'CHVCT000', 'RSAN018', 'CHSWP003', 'CHDMC006', 'SLDUT007', 'RSAN072',
-                                       'OLD_MID', 'RSAN058', 'ROLD059', 'RSAN007', 'RSAC081', 'SLMZU025',
-                                       'RSAC075', 'SLMZU011', 'SLSUS012', 'SLCBN002', 'RSAC064']
+#observed_stations_ordered_by_median = ['RSMKL008', 'RSAN032', 'RSAN037', 'RSAC092', 'SLTRM004', 'ROLD024',
+#                                       'CHVCT000', 'RSAN018', 'CHSWP003', 'CHDMC006', 'SLDUT007', 'RSAN072',
+#                                       'OLD_MID', 'RSAN058', 'ROLD059', 'RSAN007', 'RSAC081', 'SLMZU025',
+#                                       'RSAC075', 'SLMZU011', 'SLSUS012', 'SLCBN002', 'RSAC064']
 
-output_stations = None
-exclude_input_variable='Martinez_input'
-
-data_file = "dsm2_ann_inputs_historical_20220506.xlsx"
-num_sheets = 10
 ndays=118
 window_size=0
 nwindows=0
-data_path = os.path.join(cwd,data_file)
 
 output_stations = ['CHDMC006', 'CHSWP003', 'CHVCT000', 'OLD_MID', 'ROLD024', 'ROLD059',
                   'RSAC064', 'RSAC075', 'RSAC081', 'RSAC092', 'RSAN007', 'RSAN018',

@@ -82,7 +82,6 @@ def scale_inputs(inp_template,input_loc,scale_df,fs1,fs2,fs3,
     for mon in scale_df.index:
         dfmod = dfinps.loc[dfinps.index.month == mon ,input_loc]*scale_df.loc[mon,input_loc]
         dfinps_global.update(dfmod, overwrite=True)
-    #print(dfinps_global)
     return dfinps_global
 
 def make_sd(wateryear):
