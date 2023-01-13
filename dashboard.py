@@ -1,11 +1,7 @@
-from bokeh.plotting import figure #, save, show
+from bokeh.plotting import figure
 from bokeh.models import Range1d, HoverTool, Label
-#from bokeh.io import export_png
-#from operator import index
-#from posixpath import dirname
 import panel as pn
 import pandas as pd
-#import matplotlib.pyplot as plt
 import os
 import evaluateann
 import datetime as dt
@@ -14,8 +10,6 @@ import itertools
 from bokeh.palettes import Set2_5 as palette
 import yaml
 
-
-# Some hard-coded stuff for now - will move to a YAML config file
 dir = os.path.dirname(os.path.realpath(__file__))
 
 with open(os.path.join(dir,'config.yaml'), 'r') as f:
@@ -24,7 +18,6 @@ with open(os.path.join(dir,'config.yaml'), 'r') as f:
 input_dict = config['input_dict']
 name_map = config['name_mapping']
 name_map_swap = {v: k for k, v in name_map.items()}
-#print(name_map_swap)
 variables = config['output_vars']
 inp_template = os.path.join(dir,'ann_inp.csv')
 dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['Time'])
@@ -410,7 +403,7 @@ dash = pn.Column(title_pane,
     )
 ),
 assumptions_pane,
-#radio_group,
+feedback_pane,
 )
 
 #dfinps_test.to_csv('dfinps_test.csv')
