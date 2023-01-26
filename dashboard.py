@@ -1,5 +1,6 @@
 from bokeh.plotting import figure
 from bokeh.models import Range1d, HoverTool, Label
+from bokeh.models.formatters import PrintfTickFormatter
 import panel as pn
 import pandas as pd
 import os
@@ -34,9 +35,10 @@ scale_df = scale_df1.copy()
 
 class SliderGroup:
     def __init__(self,input_loc):
-        sp = dict(start=0.80,  end=1.20, step=0.05, value=1,
+        sp = dict(start=0.80,  end=1.20, step=0.05, value=1.00,
                   orientation = 'vertical',direction ='rtl',
-                  margin=10, height=100)
+                  margin=3, height=100,
+                  format=PrintfTickFormatter(format='%.2f'))
         self.input_loc = input_loc
         self.fs1 = fs(name='Jan', **sp)
         self.fs2 = fs(name='Feb', **sp)
@@ -166,6 +168,7 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
         p.line(source = pred_df, x='Time', y=str(selected_key_stations),
             line_color = next(colors), line_width=1, legend_label=m)
 
+    pred_df.to_csv('validation.csv')
     # Styling attributes.
     p.plot_height = 500
     p.plot_width = 1000
@@ -238,7 +241,6 @@ yearselect_w = pn.widgets.RadioButtonGroup(name='WY Selector',
 run_btn = pn.widgets.Button(name='Run ANN', button_type='primary')
 train_btn = pn.widgets.Button(name='Train ANN', button_type='primary')
 refresh_btn = pn.widgets.Button(name='Refresh Plot', button_type='default',width=50)
-#adjuster_w = pn.widgets.TextInput(name = 'Test', placeholder = 'modify')
 
 title_pane = pn.pane.Markdown('''
 ## DSM2 Emulator Dashboard
@@ -262,10 +264,7 @@ Thank you for evaluating the DSM2 Emulator Dashboard. Your feedback and suggesti
 [Leave Feeback](https://forms.gle/C6ysGxvxwqK1XY54A)
 ''',background='white')
 
-# Bindings
-
-
-
+# Bindings.
 northern_flow = SliderGroup('northern_flow')
 scale_northern_flow = pn.bind(scale_inputs,scale_df = scale_df,
                            input_loc = northern_flow.input_loc,inp_template = inp_template,
@@ -310,6 +309,9 @@ listener_bnd = pn.bind(listener,
 sd_bnd = pn.bind(make_sd,wateryear = yearselect_w)
 ed_bnd = pn.bind(make_ed,wateryear = yearselect_w)
 # Dashboard Layout
+
+pn.extension(loading_spinner='dots', loading_color='silver')
+pn.param.ParamMethod.loading_indicator = True
 
 dash = pn.Column(title_pane,
                  pn.pane.Markdown('### Simulation Period (WY)'),
@@ -383,7 +385,7 @@ dash = pn.Column(title_pane,
                 model_kind = model_kind_w
             ),
             model_kind_w,
-            refresh_btn
+            refresh_btn, loading_indicator=True,
         )),
 
         ('Tabulated Outputs',
