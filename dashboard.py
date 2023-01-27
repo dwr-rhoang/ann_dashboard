@@ -240,10 +240,10 @@ train_btn = pn.widgets.Button(name='Train ANN', button_type='primary')
 refresh_btn = pn.widgets.Button(name='Refresh Plot', button_type='default',width=50)
 output_download = pn.widgets.FileDownload(file='ann_outputs.csv',
                                         filename='ann_outputs.csv',
-                                        label = 'Download Output Plot Data')
+                                        label = 'Download ANN Output Data')
 input_download = pn.widgets.FileDownload(file='ann_inputs.csv',
                                         filename='ann_inputs.csv',
-                                        label = 'Download Input Plot Data')
+                                        label = 'Download ANN Input Data')
 
 
 title_pane = pn.pane.Markdown('''
