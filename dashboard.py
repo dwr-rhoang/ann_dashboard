@@ -63,7 +63,8 @@ class SliderGroup:
                      fs9=self.fs9,)
 
 def scale_inputs(inp_template,input_loc,scale_df,fs1,fs2,fs3,
-                 fs4,fs5,fs6,fs7,fs8,fs9,fs10,fs11,fs12):
+                 fs4,fs5,fs6,fs7,fs8,fs9,fs10,fs11,fs12,
+                 sd = None, ed = None):
                  
     global dfinps_global
     dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['Time'])
@@ -82,8 +83,16 @@ def scale_inputs(inp_template,input_loc,scale_df,fs1,fs2,fs3,
     scale_df.loc[12,input_loc] = fs12
 
     for mon in scale_df.index:
-        dfmod = dfinps.loc[dfinps.index.month == mon ,input_loc]*scale_df.loc[mon,input_loc]
+        dfmod = dfinps.loc[(dfinps.index.month == mon) &
+                           (dfinps.index>sd) &
+                           (dfinps.index<ed),
+                           input_loc]*scale_df.loc[mon,input_loc]
+
         dfinps_global.update(dfmod, overwrite=True)
+
+    inputdf = dfinps_global.loc[(dfinps_global.index > sd) &
+                                (dfinps_global.index <= ed)]
+    inputdf.to_csv('ann_inputs.csv')
     return dfinps_global
 
 def make_sd(wateryear):
@@ -195,15 +204,6 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
     
     return p
 
-def evaluate_ann(selected_key_stations,dfinp,start_date,end_date,
-                     refresh,listener,model_kind):
-    refresh = refresh
-    listener = listener
-    targ_df,pred_df = evaluateann.run_ann(selected_key_stations,
-                                          dfinp,dfouts,model_kind[0])
-    df_widget = pn.widgets.Tabulator(pred_df)
-    return df_widget
-
 def listener(e1,e2,e3,e4,e5,e6):
     e1 = e1
     e2 = e2
@@ -214,11 +214,6 @@ def listener(e1,e2,e3,e4,e5,e6):
     return None
 
 # Widgets
-
-inputlocs = ['northern_flow','exports']
-inputlocs_w = pn.widgets.Select(name='Input Location', options = inputlocs,
-                                value = 'northern_flow')
-
 variables_w = pn.widgets.Select(name='Output Location', options = name_map_swap)
 model_kind_w = pn.widgets.CheckBoxGroup(
                     name='ML Model Selection', value = ['Res-LSTM'],
@@ -243,9 +238,12 @@ yearselect_w = pn.widgets.RadioButtonGroup(name='WY Selector',
 run_btn = pn.widgets.Button(name='Run ANN', button_type='primary')
 train_btn = pn.widgets.Button(name='Train ANN', button_type='primary')
 refresh_btn = pn.widgets.Button(name='Refresh Plot', button_type='default',width=50)
-file_download = pn.widgets.FileDownload(file='ann_outputs.csv',
+output_download = pn.widgets.FileDownload(file='ann_outputs.csv',
                                         filename='ann_outputs.csv',
                                         label = 'Download Output Plot Data')
+input_download = pn.widgets.FileDownload(file='ann_inputs.csv',
+                                        filename='ann_inputs.csv',
+                                        label = 'Download Input Plot Data')
 
 
 title_pane = pn.pane.Markdown('''
@@ -277,19 +275,25 @@ If you have questions, please contact Kevin He (Kevin.He@Water.ca.gov)
 ''',background='white')
 
 # Bindings.
+sd_bnd = pn.bind(make_sd,wateryear = yearselect_w)
+ed_bnd = pn.bind(make_ed,wateryear = yearselect_w)
+
 northern_flow = SliderGroup('northern_flow')
 scale_northern_flow = pn.bind(scale_inputs,scale_df = scale_df,
                            input_loc = northern_flow.input_loc,inp_template = inp_template,
+                           sd = sd_bnd, ed = ed_bnd,
                            **northern_flow.kwargs)
 
 exports = SliderGroup('exports')
 scale_exp = pn.bind(scale_inputs,scale_df = scale_df,
                            input_loc = exports.input_loc,inp_template = inp_template,
+                           sd = sd_bnd, ed = ed_bnd,
                            **exports.kwargs)
 
 sjr_flow = SliderGroup('sjr_flow')
 scale_sjr_flow = pn.bind(scale_inputs,scale_df = scale_df,
                            input_loc = sjr_flow.input_loc,inp_template = inp_template,
+                           sd = sd_bnd, ed = ed_bnd,
                            **sjr_flow.kwargs)
 
 #net_delta_cu = SliderGroup('net_delta_cu')
@@ -300,11 +304,13 @@ scale_sjr_flow = pn.bind(scale_inputs,scale_df = scale_df,
 sjr_vernalis_ec = SliderGroup('sjr_vernalis_ec')
 scale_sjr_vernalis_ec = pn.bind(scale_inputs,scale_df = scale_df,
                            input_loc = sjr_vernalis_ec.input_loc,inp_template = inp_template,
+                           sd = sd_bnd, ed = ed_bnd,
                            **sjr_vernalis_ec.kwargs)
 
 sac_greens_ec = SliderGroup('sac_greens_ec')
 scale_sac_greens_ec = pn.bind(scale_inputs,scale_df = scale_df,
                            input_loc = sac_greens_ec.input_loc,inp_template = inp_template,
+                           sd = sd_bnd, ed = ed_bnd,
                            **sac_greens_ec.kwargs)
 
 
@@ -318,11 +324,8 @@ listener_bnd = pn.bind(listener,
                        e6 = scale_sac_greens_ec)
 
 
-sd_bnd = pn.bind(make_sd,wateryear = yearselect_w)
-ed_bnd = pn.bind(make_ed,wateryear = yearselect_w)
+
 # Dashboard Layout
-
-
 pn.extension(loading_spinner='dots', loading_color='silver')
 pn.param.ParamMethod.loading_indicator = True
 
@@ -398,22 +401,9 @@ dash = pn.Column(title_pane,
                 model_kind = model_kind_w
             ),
             model_kind_w,
-            pn.Row(file_download,refresh_btn)
+            pn.Row(input_download,output_download,refresh_btn)
             
         )),
-
-        #('Tabulated Outputs',
-        #pn.Column(
-            #pn.bind(evaluate_ann,
-            #    selected_key_stations=variables_w,
-            #    dfinp = dfinps_global,
-            #    start_date=dateselect_w.value[0],
-            #    end_date=dateselect_w.value[1],
-            #    refresh=refresh_btn, 
-            #    listener = listener_bnd,
-            #    model_kind = model_kind_w
-            #),
-        #)),
     )
     )
 ),
