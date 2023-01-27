@@ -1,5 +1,5 @@
 from bokeh.plotting import figure
-from bokeh.models import Range1d, HoverTool, Label
+from bokeh.models import Range1d, HoverTool, Label, CustomJS
 from bokeh.models.formatters import PrintfTickFormatter
 import panel as pn
 import pandas as pd
@@ -161,17 +161,19 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
     listener = listener
     p = figure(title = f'{name_map[selected_key_stations]} ({selected_key_stations})',
                x_axis_type='datetime')
+    outputdf = pd.DataFrame()
     for m in model_kind:
         targ_df,pred_df = evaluateann.run_ann(selected_key_stations,dfinp,dfouts,m)
         p.line(source = targ_df,x='Time',y=str(selected_key_stations),
             line_color = 'black', line_width=1, legend_label='Historical (DSM2 simulated)')
         p.line(source = pred_df, x='Time', y=str(selected_key_stations),
             line_color = next(colors), line_width=1, legend_label=m)
-
-    pred_df.to_csv('validation.csv')
+        outputdf[f'{selected_key_stations}_{m}'] = pred_df
+    outputdf = outputdf.loc[(outputdf.index > start_date) & (outputdf.index <= end_date)]
+    outputdf.to_csv('ann_outputs.csv')
     # Styling attributes.
     p.plot_height = 500
-    p.plot_width = 1000
+    p.plot_width = 900
     p.legend.location = 'top_left'
     p.yaxis.axis_label = 'EC (uS/cm)'
     p.xaxis.axis_label = 'Date'
@@ -241,27 +243,37 @@ yearselect_w = pn.widgets.RadioButtonGroup(name='WY Selector',
 run_btn = pn.widgets.Button(name='Run ANN', button_type='primary')
 train_btn = pn.widgets.Button(name='Train ANN', button_type='primary')
 refresh_btn = pn.widgets.Button(name='Refresh Plot', button_type='default',width=50)
+file_download = pn.widgets.FileDownload(file='ann_outputs.csv',
+                                        filename='ann_outputs.csv',
+                                        label = 'Download Output Plot Data')
+
 
 title_pane = pn.pane.Markdown('''
 ## DSM2 Emulator Dashboard
+A browser-based Delta Salinity Dashboard which serves 
+as the front-end user interface for the DSM2 salinity emulation machine learning models 
+co-developed by the California Department of Water Resources and University of California, Davis.​
 
 ''',background='white')
-disclaimer_pane = pn.pane.Markdown('''
-Test
-''')
+
 assumptions_pane = pn.pane.Markdown('''
 #### References  
 Qi, S.; He M.; Bai Z.; Ding Z.; Sandhu, P.; Chung, F.; Namadi, P.; 
 Zhou, Y.; Hoang, R.; Tom, B.; Anderson, J.; Roh, D.M. 
 Novel Salinity Modeling Using Deep Learning for the Sacramento—San
 Joaquin Delta of California. Water 2022, 14, 3628. 
-https://doi.org/10.3390/w14223628
+[https://doi.org/10.3390/w14223628](https://doi.org/10.3390/w14223628)  
+Qi, S.; He, M.; Bai, Z.; Ding, Z.; Sandhu, P.; Zhou, Y.; Namadi, P.; 
+Tom, B.; Hoang, R.; Anderson, J.
+ Multi-Location Emulation of a Process-Based Salinity Model Using Machine Learning. Water 2022, 14, 2030. 
+[https://doi.org/10.3390/w14132030](https://doi.org/10.3390/w14132030)
 ''')
 
 feedback_pane = pn.pane.Markdown('''
-Disclaimer: this dashboard is still in beta.  
-Thank you for evaluating the DSM2 Emulator Dashboard. Your feedback and suggestions are welcome.  
-[Leave Feeback](https://forms.gle/C6ysGxvxwqK1XY54A)
+#### Disclaimer: this dashboard is still in beta.  
+Thank you for evaluating the DSM2 Emulator Dashboard. Your feedback and suggestions are welcome. 
+[Leave Feeback](https://forms.gle/C6ysGxvxwqK1XY54A)  
+If you have questions, please contact Kevin He (Kevin.He@Water.ca.gov)
 ''',background='white')
 
 # Bindings.
@@ -309,6 +321,7 @@ listener_bnd = pn.bind(listener,
 sd_bnd = pn.bind(make_sd,wateryear = yearselect_w)
 ed_bnd = pn.bind(make_ed,wateryear = yearselect_w)
 # Dashboard Layout
+
 
 pn.extension(loading_spinner='dots', loading_color='silver')
 pn.param.ParamMethod.loading_indicator = True
@@ -385,11 +398,12 @@ dash = pn.Column(title_pane,
                 model_kind = model_kind_w
             ),
             model_kind_w,
-            refresh_btn, loading_indicator=True,
+            pn.Row(file_download,refresh_btn)
+            
         )),
 
-        ('Tabulated Outputs',
-        pn.Column(
+        #('Tabulated Outputs',
+        #pn.Column(
             #pn.bind(evaluate_ann,
             #    selected_key_stations=variables_w,
             #    dfinp = dfinps_global,
@@ -399,7 +413,7 @@ dash = pn.Column(title_pane,
             #    listener = listener_bnd,
             #    model_kind = model_kind_w
             #),
-        )),
+        #)),
     )
     )
 ),
@@ -407,12 +421,8 @@ assumptions_pane,
 feedback_pane,
 )
 
-#dfinps_test.to_csv('dfinps_test.csv')
-#dfinps_global.to_csv('dfinps_global.csv')
-
-#dash.show(title = "DSM2 ANN Emulator Dashboard")
-
 dash.servable(title = "DSM2 ANN Emulator Dashboard")
+
 
 if __name__ == '__main__':
     dash.show(title = "DSM2 ANN Emulator Dashboard")
