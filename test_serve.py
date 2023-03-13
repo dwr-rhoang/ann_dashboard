@@ -1,5 +1,10 @@
-import panel as pn
+#import tensorflow as tf
+#from tensorflow import keras
+#from tensorflow.keras import models
+#import joblib
+#import pandas as pd
+#import numpy as np
 
-dash = pn.Column('Hello World')
+file_download = pn.widgets.FileDownload(file='FileDownload.ipynb', filename='custom_filename.ipynb')
 
-dash.servable(title = "This is only a test")
+file_download

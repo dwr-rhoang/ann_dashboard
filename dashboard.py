@@ -28,7 +28,6 @@ wateryear = 2014
 start_date = dt.datetime(wateryear-1, 10, 1)
 end_date = dt.datetime(wateryear, 9, 30)
 
-
 scale_df1 =pd.read_csv(os.path.join(dir,'input_scale.csv'),
                        index_col=0, parse_dates = ['month'])
 scale_df = scale_df1.copy()
@@ -220,18 +219,13 @@ model_kind_w = pn.widgets.CheckBoxGroup(
                     options = ['Res-LSTM','Res-GRU','LSTM', 'GRU', 'ResNet'],
                     inline=True)
 
-dateselect_w = pn.widgets.DateRangeSlider(name='Date Range',
-                                            start=dt.datetime(1990, 1, 1),
-                                            end=dt.datetime(2019, 12, 31),
-                                            value=(start_date, end_date),
-                                            disabled =False)
-
 yearselect_w = pn.widgets.RadioButtonGroup(name='WY Selector',
                 options=['1991','1992','1993','1994',
                          '1995','1996','1997','1998','1999','2000',
                          '2001','2002','2003','2004','2005','2006',
                          '2007','2008','2009','2010','2011','2012',
-                         '2013','2014', '2015','2016','2017','2018'], 
+                         '2013','2014', '2015','2016','2017','2018',
+                         '2019','2020','2021','2022'], 
                 value = '2014',
                 button_type='primary')
 
@@ -343,7 +337,7 @@ dash = pn.Column(title_pane,
                     dfinp=scale_northern_flow,input_loc='northern_flow',
                     start_date=sd_bnd,end_date=ed_bnd))),
 
-                ("Exports",
+                ("Pumping",
                 pn.Column(
                 pn.Row(*exports.fs_set),
                 pn.bind(make_input_plot,inp_template = dfinps,
