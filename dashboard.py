@@ -21,6 +21,7 @@ name_map = config['name_mapping']
 name_map_swap = {v: k for k, v in name_map.items()}
 variables = config['output_vars']
 inp_template = os.path.join(dir,'ann_inp.csv')
+dfobs = pd.read_csv('obs_hist_ec.csv',index_col=0, parse_dates = ['Time'])
 dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['Time'])
 dfinps_global = dfinps.copy()
 dfouts = pd.read_csv('dsm2_hist_ec_output.csv',index_col=0, parse_dates = ['Time'])
@@ -161,7 +162,7 @@ def make_input_plot(inp_template,dfinp,input_loc,start_date,end_date):
     return p
 
 def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
-                     refresh,listener,model_kind):
+                     refresh,listener,model_kind,dfobs=None):
     
     colors = itertools.cycle(palette)
 
@@ -179,6 +180,15 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
         outputdf[f'{selected_key_stations}_{m}'] = pred_df
     outputdf = outputdf.loc[(outputdf.index > start_date) & (outputdf.index <= end_date)]
     outputdf.to_csv('ann_outputs.csv')
+
+    # Overlay CDEC observed historical data.
+    if dfobs is not None:
+        p.line(source = dfobs,x='Time',y=str(selected_key_stations),
+        line_color = 'red', line_width=1,
+        line_alpha=0.75,
+        line_dash = 'dashed',
+        legend_label='Historical (Observed)')
+
     # Styling attributes.
     p.plot_height = 500
     p.plot_width = 900
@@ -317,8 +327,6 @@ listener_bnd = pn.bind(listener,
                        e5 = scale_sjr_vernalis_ec,
                        e6 = scale_sac_greens_ec)
 
-
-
 # Dashboard Layout
 pn.extension(loading_spinner='dots', loading_color='silver')
 pn.param.ParamMethod.loading_indicator = True
@@ -392,7 +400,8 @@ dash = pn.Column(title_pane,
                 end_date = ed_bnd,
                 refresh=refresh_btn, 
                 listener = listener_bnd,
-                model_kind = model_kind_w
+                model_kind = model_kind_w,
+                dfobs = dfobs,
             ),
             model_kind_w,
             pn.Row(input_download,output_download,refresh_btn)
