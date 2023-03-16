@@ -1,6 +1,7 @@
 name: ann
 channels:
   - defaults
+  - conda-forge
 dependencies:
   - python=3.8
   - pip
@@ -10,6 +11,11 @@ dependencies:
   - hvplot
   - panel
   - pillow == 9.0.1
+  - dask
+  - diskcache
+  # data
+  - aiohttp
+  - requests
   - pip:
     - scikit-learn
     - tensorflow

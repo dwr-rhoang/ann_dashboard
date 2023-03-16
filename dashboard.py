@@ -162,7 +162,7 @@ def make_input_plot(inp_template,dfinp,input_loc,start_date,end_date):
     return p
 
 def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
-                     refresh,listener,model_kind,dfobs=None):
+                     refresh,listener,model_kind,overlay_obs=False):
     
     colors = itertools.cycle(palette)
 
@@ -182,7 +182,7 @@ def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
     outputdf.to_csv('ann_outputs.csv')
 
     # Overlay CDEC observed historical data.
-    if dfobs is not None:
+    if overlay_obs:
         p.line(source = dfobs,x='Time',y=str(selected_key_stations),
         line_color = 'red', line_width=1,
         line_alpha=0.75,
@@ -228,6 +228,8 @@ model_kind_w = pn.widgets.CheckBoxGroup(
                     name='ML Model Selection', value = ['Res-LSTM'],
                     options = ['Res-LSTM','Res-GRU','LSTM', 'GRU', 'ResNet'],
                     inline=True)
+
+overlay_obs_w =  pn.widgets.Checkbox(name='Overlay Observed Data')
 
 yearselect_w = pn.widgets.RadioButtonGroup(name='WY Selector',
                 options=['1991','1992','1993','1994',
@@ -401,9 +403,9 @@ dash = pn.Column(title_pane,
                 refresh=refresh_btn, 
                 listener = listener_bnd,
                 model_kind = model_kind_w,
-                dfobs = dfobs,
+                overlay_obs = overlay_obs_w,
             ),
-            model_kind_w,
+            model_kind_w,overlay_obs_w,
             pn.Row(input_download,output_download,refresh_btn)
             
         )),
