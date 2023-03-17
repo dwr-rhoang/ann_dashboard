@@ -231,7 +231,7 @@ model_kind_w = pn.widgets.CheckBoxGroup(
                     options = ['Res-LSTM','Res-GRU','LSTM', 'GRU', 'ResNet'],
                     inline=True)
 
-overlay_obs_w =  pn.widgets.Checkbox(name='Overlay Observed Data')
+overlay_obs_w =  pn.widgets.Checkbox(name='Overlay Observed Data', value = True)
 
 yearselect_w = pn.widgets.RadioButtonGroup(name='WY Selector',
                 options=['1991','1992','1993','1994',
