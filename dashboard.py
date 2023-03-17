@@ -3,6 +3,7 @@ from bokeh.models import Range1d, HoverTool, Label, CustomJS
 from bokeh.models.formatters import PrintfTickFormatter
 import panel as pn
 import pandas as pd
+import numpy as np
 import os
 import evaluateann
 import datetime as dt
@@ -22,6 +23,7 @@ name_map_swap = {v: k for k, v in name_map.items()}
 variables = config['output_vars']
 inp_template = os.path.join(dir,'ann_inp.csv')
 dfobs = pd.read_csv('obs_hist_ec.csv',index_col=0, parse_dates = ['Time'])
+dfobs.replace(-2, np.nan, inplace=True)
 dfinps = pd.read_csv(inp_template,index_col=0, parse_dates = ['Time'])
 dfinps_global = dfinps.copy()
 dfouts = pd.read_csv('dsm2_hist_ec_output.csv',index_col=0, parse_dates = ['Time'])
