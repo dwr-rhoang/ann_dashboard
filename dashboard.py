@@ -390,7 +390,7 @@ dash = pn.Column(title_pane,
                 #pn.Column()),   
 
             ),
-        pn.Row(input_upload)      
+        #pn.Row(input_upload)      
     ),
 
     pn.Column(pn.pane.Markdown('### ANN Outputs'),
