@@ -104,7 +104,8 @@ def make_ed(wateryear):
     end_date = dt.datetime(int(wateryear), 9, 30)
     return end_date
 
-def make_input_plot(inp_template,dfinp,input_loc,start_date,end_date):
+def make_input_plot(inp_template,dfinp,input_loc,start_date,end_date,refresh):
+    refresh = refresh
     # Determine the min and max y-axis limits from given start and end dates
     dfinp_window = dfinp.loc[(dfinp.index>start_date) &
                              (dfinp.index<end_date)]
@@ -160,7 +161,8 @@ def make_input_plot(inp_template,dfinp,input_loc,start_date,end_date):
         formatters = {'$x':'datetime'}
     ))
     p.toolbar.active_drag = None
-
+    if input_upload.value is not None:
+        input_upload.save('ann_inp.csv')
     return p
 
 def make_ts_plot_ANN(selected_key_stations,dfinp,start_date,end_date,
@@ -252,7 +254,7 @@ output_download = pn.widgets.FileDownload(file='ann_outputs.csv',
 input_download = pn.widgets.FileDownload(file='ann_inputs.csv',
                                         filename='ann_inputs.csv',
                                         label = 'Download ANN Input Data')
-
+input_upload = pn.widgets.FileInput(accept='.csv')
 
 title_pane = pn.pane.Markdown('''
 ## DSM2 Emulator Dashboard
@@ -347,21 +349,21 @@ dash = pn.Column(title_pane,
                 pn.Row(*northern_flow.fs_set),
                 pn.bind(make_input_plot,inp_template = dfinps,
                     dfinp=scale_northern_flow,input_loc='northern_flow',
-                    start_date=sd_bnd,end_date=ed_bnd))),
+                    start_date=sd_bnd,end_date=ed_bnd,refresh=refresh_btn))),
 
                 ("Pumping",
                 pn.Column(
                 pn.Row(*exports.fs_set),
                 pn.bind(make_input_plot,inp_template = dfinps,
                     dfinp=scale_exp,input_loc='exports',
-                    start_date=sd_bnd,end_date=ed_bnd))),
+                    start_date=sd_bnd,end_date=ed_bnd,refresh=refresh_btn))),
 
                 ("SJR flow",
                 pn.Column(
                 pn.Row(*sjr_flow.fs_set),
                 pn.bind(make_input_plot,inp_template = dfinps,
                     dfinp=scale_sjr_flow,input_loc='sjr_flow',
-                    start_date=sd_bnd,end_date=ed_bnd))),
+                    start_date=sd_bnd,end_date=ed_bnd,refresh=refresh_btn))),
 
 #                ("Net Delta Consumptive Use",
 #                pn.Column(
@@ -375,20 +377,20 @@ dash = pn.Column(title_pane,
                 pn.Row(*sjr_vernalis_ec.fs_set),
                 pn.bind(make_input_plot,inp_template = dfinps,
                     dfinp=scale_sjr_vernalis_ec,input_loc='sjr_vernalis_ec',
-                    start_date=sd_bnd,end_date=ed_bnd))),
+                    start_date=sd_bnd,end_date=ed_bnd,refresh=refresh_btn))),
 
                 ("Sac Greens EC",
                 pn.Column(
                 pn.Row(*sac_greens_ec.fs_set),
                 pn.bind(make_input_plot,inp_template = dfinps,
                     dfinp=scale_sac_greens_ec,input_loc='sac_greens_ec',
-                    start_date=sd_bnd,end_date=ed_bnd))),
+                    start_date=sd_bnd,end_date=ed_bnd,refresh=refresh_btn))),
 
                 #("DXC",
-                #pn.Column()),
-                
+                #pn.Column()),   
 
-            )
+            ),
+        pn.Row(input_upload)      
     ),
 
     pn.Column(pn.pane.Markdown('### ANN Outputs'),
