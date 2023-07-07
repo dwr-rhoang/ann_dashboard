@@ -274,7 +274,11 @@ Joaquin Delta of California. Water 2022, 14, 3628.
 Qi, S.; He, M.; Bai, Z.; Ding, Z.; Sandhu, P.; Zhou, Y.; Namadi, P.; 
 Tom, B.; Hoang, R.; Anderson, J.
  Multi-Location Emulation of a Process-Based Salinity Model Using Machine Learning. Water 2022, 14, 2030. 
-[https://doi.org/10.3390/w14132030](https://doi.org/10.3390/w14132030)
+[https://doi.org/10.3390/w14132030](https://doi.org/10.3390/w14132030)  
+Qi, S.; He, M.; Hoang, R.; Zhou, Y.; Namadi, P.; Tom, B.;
+Sandhu, P.; Bai, Z.; Chung, F.; Ding, Z.; et al. 
+Salinity Modeling Using Deep Learning with Data Augmentation and Transfer Learning. Water 2023, 15, 2482. 
+[https://doi.org/10.3390/w15132482](https://doi.org/10.3390/w15132482)
 ''')
 
 feedback_pane = pn.pane.Markdown('''
